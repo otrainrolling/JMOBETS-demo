@@ -32,6 +32,15 @@ create table if not exists public.demo_picks (
 );
 create index if not exists demo_picks_user_date_idx on public.demo_picks(user_id, created_at desc);
 
+create table if not exists public.signup_attempts (
+  id bigint generated always as identity primary key,
+  fingerprint text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists signup_attempts_fingerprint_date_idx on public.signup_attempts(fingerprint,created_at desc);
+alter table public.signup_attempts enable row level security;
+revoke all on public.signup_attempts from public, anon, authenticated;
+
 create table if not exists private.moderation_audit (
   id bigint generated always as identity primary key,
   admin_id uuid not null references auth.users(id),
