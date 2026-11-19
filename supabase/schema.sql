@@ -104,9 +104,9 @@ begin
   if p_stake is null or p_stake < 1 or p_stake > 1000 then
     raise exception 'Stake must be between 1 and 1000';
   end if;
-  select (option ->> 'odds')::numeric into price
-  from public.demo_markets m, jsonb_array_elements(m.options) as option
-  where m.id = p_market_id and m.is_open and option ->> 'label' = p_selection
+  select (opt.item ->> 'odds')::numeric into price
+  from public.demo_markets m, jsonb_array_elements(m.options) as opt(item)
+  where m.id = p_market_id and m.is_open and opt.item ->> 'label' = p_selection
   limit 1;
   if price is null or price <= 1 then raise exception 'Invalid or closed demo market'; end if;
   update public.profiles set balance = balance - p_stake
