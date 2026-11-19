@@ -131,7 +131,19 @@
     const query=byId('adminSearch').value.trim().toLowerCase(),el=byId('adminUsers');
     if(profile?.role!=='admin'){el.textContent='Access denied';return;}
     const rows=adminProfiles.filter(x=>x.username.includes(query));
-    el.innerHTML=rows.map(u=>'<div class="historyitem"><div class="row"><strong>@'+safe(u.username)+'</strong><span class="pill">'+safe(u.role.toUpperCase())+'</span></div><div class="row small muted" style="margin:10px 0"><span>Status: '+safe(u.account_status)+'</span><span>Balance: '+fmt(u.balance)+' JMOT</span><span>Picks: '+(count[u.id]||0)+'</span></div><div class="actions">'+(u.role==='admin'?'<span class="muted small">Protected admin account</span>':'<button class="btn secondary small" data-target="'+safe(u.id)+'" data-status="active">Activate</button><button class="btn secondary small" data-target="'+safe(u.id)+'" data-status="suspended">Suspend</button><button class="btn secondary small" data-target="'+safe(u.id)+'" data-status="banned">Ban</button>')+'</div></div>').join('')||'<p class="empty">No matching accounts.</p>';
+    el.innerHTML=rows.map(u=>'<div class="historyitem"><div class="row"><strong>@'+safe(u.username)+'</strong><span class="pill">'+safe(u.role.toUpperCase())+'</span></div><div class="row small muted" style="margin:10px 0"><span>Status: '+safe(u.account_status)+'</span><span>Balance: '+fmt(u.balance)+' JMOT</span><span>Picks: '+(count[u.id]||0)+'</span></div><div class="actions">'+(u.role==='admin'?'<span class="muted small">Protected admin account</span>':'<button class="btn secondary small" data-view="'+safe(u.id)+'">View picks</button><button class="btn secondary small" data-target="'+safe(u.id)+'" data-status="active">Activate</button><button class="btn secondary small" data-target="'+safe(u.id)+'" data-status="suspended">Suspend</button><button class="btn secondary small" data-target="'+safe(u.id)+'" data-status="banned">Ban</button>')+'</div></div>').join('')||'<p class="empty">No matching accounts.</p>';
+    el.querySelectorAll('[data-view]').forEach(btn=>btn.onclick=async()=>{
+      const u=adminProfiles.find(x=>x.id===btn.dataset.view);if(!u)return;
+      const {data:rows,error}=await db.from('demo_picks').select('selection,market_id,decimal_odds,stake,status,created_at')
+        .eq('user_id',u.id).order('created_at',{ascending:false}).limit(100);
+      if(error){toast('Unable to load picks');return;}
+      const panel=byId('adminPickDetails');
+      panel.hidden=false;
+      panel.innerHTML='<h3>Recent picks for @'+safe(u.username)+'</h3>'+
+        ((rows||[]).map(p=>'<div class="historyitem"><strong>'+safe(p.selection)+'</strong> · '+safe(p.market_id)+
+          ' · '+fmt(p.stake)+' JMOT @ '+Number(p.decimal_odds).toFixed(2)+' · '+safe(p.status)+
+          ' · '+new Date(p.created_at).toLocaleString()+'</div>').join('')||'<p class="empty">No picks.</p>');
+    });
     el.querySelectorAll('[data-target]').forEach(btn=>btn.onclick=async()=>{
       const u=adminProfiles.find(x=>x.id===btn.dataset.target);if(!u||u.role==='admin')return;
       if(!confirm('Change @'+u.username+' status to '+btn.dataset.status+'?'))return;
@@ -145,6 +157,7 @@
   document.querySelectorAll('[data-sport]').forEach(b=>b.onclick=()=>{filter=b.dataset.sport;setPage('sports');});
   document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.filter;render();});
   document.querySelectorAll('[data-authmode]').forEach(b=>b.onclick=()=>{authMode=b.dataset.authmode;status(!ready?serverMessage:'');render();});
+  byId('accountTop').onclick=()=>setPage('account');
   byId('authForm').onsubmit=handleAuth;
   byId('adminSearch').oninput=()=>loadAdmin(); // Fetch fresh data for searches, avoid stale account lists.
   byId('signOut').onclick=async()=>{if(db)await db.auth.signOut();profile=null;picks=[];setPage('home');toast('Logged out.');};
